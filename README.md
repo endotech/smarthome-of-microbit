@@ -1,0 +1,2 @@
+# smarthome-of-microbit
+microbitでスマートホームの設計シミュレーションを行うための教材
