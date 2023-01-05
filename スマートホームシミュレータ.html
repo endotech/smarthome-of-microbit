@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="design.css" type="text/css">
+
+<title>スマートホームをつくろう</title>
+<header>
+<h1>自分が暮らすためのスマートホームをつくろう</h1>
+</header>
+<p>microbitで、家の電化製品や住宅設備を制御し、自分の生活スタイルにあったスマートホームをつくります。<br>みなさんが将来、ワンルームで一人暮らしをするとします。その際に、便利で生活しやすい環境を考えましょう。</p>
+<form>
+    <div>
+        <button type="button" id="connect">接続</button>
+        制御記録 <textarea id="recieve_text"  cols="40"></textarea>
+    </div>
+    <section class="house">
+        <img src=./figure/間取り.png>
+    </section>
+    <section class="main">
+    <!--室内照明機器の制御-->
+    <div class="sample3Area" id="makeImg">
+        室内照明
+        <input type="checkbox" id="LED-control" >
+          <label for="LED-control">
+            <span></span>
+          </label>
+        <img src=./figure/室内照明.jpg>
+    </div>
+    <!--屋外照明の制御-->
+    <div class="sample3Area" id="makeImg">
+        屋外照明
+        <input type="checkbox" id="LED2-control">
+          <label for="LED2-control">
+            <span></span>
+          </label>
+          <img src=./figure/屋外照明.jpg>
+    </div>
+    <!--暖房の制御-->
+    <div class="sample3Area" id="makeImg">
+        エアコン(暖房)
+        <input type="checkbox" id="air-control">
+          <label for="air-control">
+            <span></span>
+          </label>
+        <img src=./figure/エアコン.jpg>
+    </div>
+    <!--冷房の制御-->
+    <div class="sample3Area" id="makeImg">
+        エアコン(冷房)
+        <input type="checkbox" id="air2-control">
+          <label for="air2-control">
+            <span></span>
+          </label>
+        <img src=./figure/エアコン.jpg>
+    </div>
+    <!--窓の制御-->
+    <div class="sampleArea" id="makeImg">
+        窓の開閉
+        <input type="checkbox" id="window-control">
+          <label for="window-control">
+            <span></span>
+          </label>
+        <img src=./figure/窓.jpg>
+    </div>
+    <br> <!--改行-->
+    <!--ドアの制御-->
+    <div class="sampleArea" id="makeImg">
+        ドアの開閉
+        <input type="checkbox" id="door-control">
+          <label for="door-control">
+            <span></span>
+          </label>
+        <img src=./figure/ドア.jpg>
+    </div>
+    <!--テレビの制御-->
+    <div class="sample3Area" id="makeImg">
+        テレビ
+        <input type="checkbox" id="TV-control">
+          <label for="TV-control">
+            <span></span>
+          </label>
+        <img src=./figure/テレビ.jpg>
+    </div>
+    <!--スピーカーの制御-->
+    <div class="sample3Area" id="makeImg">
+        スピーカー
+        <input type="checkbox" id="music-control">
+          <label for="music-control">
+            <span></span>
+          </label>
+        <img src=./figure/スピーカー.jpg>
+    </div>
+    <!--ロボット掃除機の制御-->
+    <div class="sample3Area" id="makeImg">
+        ロボット掃除機
+        <input type="checkbox" id="robo-control">
+          <label for="robo-control">
+            <span></span>
+          </label>
+        <img src=./figure/ロボット掃除機.jpg>
+    </div>
+    <!--その他自分で設定した機器の制御-->
+    <div class="sample3Area" id="makeImg">
+        <input type="text" id="custom" name="custom"size="9">
+        <input type="checkbox" id="custom-control">
+          <label for="custom-control">
+            <span></span>
+          </label>
+        <img src=./figure/カスタム.jpg>
+    </div>
+</section>
+
+</form>
+
+<script>
+const UUID_UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
+const UUID_TX_CHAR_CHARACTERISTIC = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'
+
+let gatt = null
+let tx = null
+let log = ""    //テキストエリアのログ記録
+
+const update = connected => {
+    document.getElementById('connect').textContent = connected ? '切断' : '接続'
+}
+
+document.getElementById('connect').addEventListener('click', e => {
+    if(!(navigator.bluetooth && navigator.bluetooth.requestDevice)) {
+        alert('WebBluetooth に未対応のブラウザです。')
+        return
+    }
+    if (document.getElementById('connect').textContent == '接続') {
+        navigator.bluetooth.requestDevice({
+            filters: [
+                { services: [UUID_UART_SERVICE] },
+                { namePrefix: 'BBC micro:bit' }
+            ]
+        }).then(device => {
+            gatt = device.gatt
+            return gatt.connect()
+        }).then(server =>
+            server.getPrimaryService(UUID_UART_SERVICE)
+        ).then(service =>
+            service.getCharacteristic(UUID_TX_CHAR_CHARACTERISTIC)
+        ).then(characteristic => {
+            tx = characteristic
+            tx.startNotifications()
+            tx.addEventListener('characteristicvaluechanged', e => {
+                const text = new TextDecoder().decode(e.target.value)  //送られてきた文字列を格納する
+
+
+                //document.getElementById('recieve_text').value = text + document.getElementById('recieve_text').value//
+                //室内照明の制御//
+                if(text=="LED-ON"){
+                    document.getElementById('recieve_text').value = "室内照明をONにしました\r\n"+ log
+                    log="室内照明をONにしました\r\n"+log  //ログを記録していく
+                    //チェックボックスの状態をONにする
+                    const input = document.querySelector('#LED-control')
+                    input.checked = true
+                }
+                else if(text=="LED-OFF"){
+                    document.getElementById('recieve_text').value = "室内照明をOFFにしました\r\n"+log
+                    log="室内照明をOFFにしました\r\n"+log  //ログを記録していく
+                    //チェックボックスの状態をOFFにする
+                    const input = document.querySelector('#LED-control')
+                    input.checked = false
+                }
+                //屋外照明の制御//
+                if(text=="LED2-ON"){
+                    document.getElementById('recieve_text').value = "屋外照明をONにしました\r\n"+ log
+                    log="屋外照明をONにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#LED2-control')
+                    input.checked = true
+                }
+                else if(text=="LED2-OFF"){
+                    document.getElementById('recieve_text').value = "屋外照明をOFFにしました\r\n"+ log
+                    log="屋外照明をOFFにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#LED2-control')
+                    input.checked = false
+                }
+                //エアコン(暖房)の制御//
+                if(text=="air-ON"){
+                    document.getElementById('recieve_text').value = "暖房をONにしました\r\n"+ log
+                    log="暖房をONにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#air-control')
+                    input.checked = true
+                }
+                else if(text=="air-OFF"){
+                    document.getElementById('recieve_text').value = "暖房をOFFにしました\r\n"+ log
+                    log="暖房をOFFにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#air-control')
+                    input.checked = false
+                }
+                //エアコン(冷房)の制御//
+                if(text=="air2-ON"){
+                    document.getElementById('recieve_text').value = "冷房をONにしました\r\n"+ log
+                    log="冷房をONにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#air2-control')
+                    input.checked = true
+                }
+                else if(text=="air2-OFF"){
+                    document.getElementById('recieve_text').value = "冷房をOFFにしました\r\n"+ log
+                    log="冷房をOFFにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#air2-control')
+                    input.checked = false
+                }
+                //窓の制御//
+                if(text=="window-ON"){
+                    document.getElementById('recieve_text').value = "窓を開きました\r\n"+ log
+                    log="窓を開きました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#window-control')
+                    input.checked = true
+                }
+                else if(text=="window-OFF"){
+                    document.getElementById('recieve_text').value = "窓を閉じました\r\n"+ log
+                    log="窓を閉じました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#window-control')
+                    input.checked = false
+                }
+                //ドアの制御//
+                if(text=="door-ON"){
+                    document.getElementById('recieve_text').value = "ドアの鍵を開けました\r\n"+ log
+                    log="ドアの鍵を開けました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#door-control')
+                    input.checked = true
+                }
+                else if(text=="door-OFF"){
+                    document.getElementById('recieve_text').value = "ドアの鍵を閉じました\r\n"+ log
+                    log="ドアの鍵を閉じました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#door-control')
+                    input.checked = false
+                }
+                //テレビの制御//
+                if(text=="TV-ON"){
+                    document.getElementById('recieve_text').value = "テレビをONにしました\r\n"+ log
+                    log="テレビをONにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#TV-control')
+                    input.checked = true
+                }
+                else if(text=="TV-OFF"){
+                    document.getElementById('recieve_text').value = "テレビをOFFにしました\r\n"+ log
+                    log="テレビをOFFにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#TV-control')
+                    input.checked = false
+                }
+                //スピーカーの制御//
+                if(text=="music-ON"){
+                    document.getElementById('recieve_text').value = "音楽を流しました\r\n"+ log
+                    log="音楽を流しました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#music-control')
+                    input.checked = true
+                }
+                else if(text=="music-OFF"){
+                    document.getElementById('recieve_text').value = "音楽を止めました\r\n"+ log
+                    log="音楽を止めました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#music-control')
+                    input.checked = false
+                }
+                //ロボット掃除機の制御//
+                if(text=="robo-ON"){
+                    document.getElementById('recieve_text').value = "ロボット掃除機で清掃を開始しました\r\n"+ log
+                    log="ロボット掃除機で清掃を開始しました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#robo-control')
+                    input.checked = true
+                }
+                else if(text=="robo-OFF"){
+                    document.getElementById('recieve_text').value = "ロボット掃除機の清掃を終了しました\r\n"+ log
+                    log="ロボット掃除機の清掃を終了しました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#robo-control')
+                    input.checked = false
+                }
+                //自分で設定した機器の制御//
+                if(text=="custom-ON"){
+                    document.getElementById('recieve_text').value = document.getElementById('custom').value +"をONにしました\r\n"+ log
+                    log=document.getElementById('custom').value +"をONにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#custom-control')
+                    input.checked = true
+                }
+                else if(text=="custom-OFF"){
+                    document.getElementById('recieve_text').value = document.getElementById('custom').value+"をOFFにしました\r\n"+ log
+                    log=document.getElementById('custom').value+"をOFFにしました\r\n"+log  //ログを記録していく
+                    const input = document.querySelector('#custom-control')
+                    input.checked = false
+                }
+
+
+            })
+            update(true)
+        }).catch(function(err) {
+            alert(err)
+        })
+    } else {
+        gatt.disconnect()
+        update(false)
+    }
+})
+</script>
